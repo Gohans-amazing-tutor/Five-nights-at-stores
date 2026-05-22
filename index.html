@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Five Nights At Stores</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { width: 100%; height: 100%; }
+        body {
+            background: black;
+            color: white;
+            font-family: Arial, Helvetica, sans-serif;
+            overflow: hidden;
+        }
+
+        .screen {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: none;
+        }
+        .screen.active { display: block; }
+
+        /* TITLE SCREEN */
+        #titleScreen img.title-image {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .new-game-button {
+            position: absolute;
+            left: 10%;
+            top: 58%;
+            width: 30%;
+            height: 10%;
+            cursor: pointer;
+            background: transparent;
+            border: none;
+        }
+
+        /* GAME SCREEN */
+        #gameScreen { background: #000; }
+
+        .game-main-image {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            max-width: 100vw;
+            max-height: 100vh;
+            object-fit: contain;
+        }
+
+        .top-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            text-align: right;
+            font-size: 18px;
+        }
+
+        .status-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            padding: 8px 12px;
+            background: rgba(0,0,0,0.6);
+            border: 1px solid #444;
+            border-radius: 4px;
+            font-size: 14px;
+            min-width: 180px;
+        }
+
+        .door-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            padding: 8px 12px;
+            background: rgba(0,0,0,0.6);
+            border: 1px solid #444;
+            border-radius: 4px;
+        }
+
+        .door-button {
+            display: block;
+            margin-bottom: 6px;
+            padding: 6px 10px;
+            background: #111;
+            border: 1px solid #555;
+            cursor: pointer;
+            color: white;
+        }
+        .door-button.active { background: #444; }
+
+        .cam-toggle {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 40px;
+            background: #000;
+            border: 2px solid #555;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .cam-toggle.active { background: #222; }
+
+        .cam-panel {
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            padding: 8px 12px;
+            background: rgba(0,0,0,0.7);
+            border: 1px solid #444;
+            border-radius: 4px;
+        }
+        .cam-button {
+            padding: 8px 14px;
+            background: #111;
+            border: 1px solid #555;
+            cursor: pointer;
+            color: white;
+        }
+        .cam-button.active { background: #444; }
+        .hidden { display: none !important; }
+
+        /* FULL-SCREEN JUMPSCARE */
+        #jumpscareOverlay {
+            position: absolute;
+            inset: 0;
+            background: black;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        #jumpscareOverlay.active { display: flex; }
+        #jumpscareOverlay img {
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- TITLE SCREEN -->
+    <div id="titleScreen" class="screen active">
+        <img class="title-image" src="title_screen.png">
+        <button class="new-game-button" id="newGameBtn"></button>
+    </div>
+
+    <!-- GAME SCREEN -->
+    <div id="gameScreen" class="screen">
+        <img id="roomImage" class="game-main-image">
+
+        <div class="top-info">
+            <div id="nightText">Night 1</div>
+            <div id="timeText">12:00 AM</div>
+        </div>
+
+        <div class="status-panel">
+            <div id="powerText">Power: 100%</div>
+            <div id="usageText">Usage: 1 bar</div>
+            <div id="guardText">Guard Distance: FAR</div>
+            <div id="guardTimerText" class="hidden">Time Left: 5s</div>
+        </div>
+
+        <div class="door-panel">
+            <button class="door-button" id="leftDoorBtn">Left Door: OPEN</button>
+            <button class="door-button" id="rightDoorBtn">Right Door: OPEN</button>
+        </div>
+
+        <div class="cam-toggle" id="camToggle">CAM</div>
+
+        <div class="cam-panel hidden" id="camPanel">
+            <button class="cam-button active" data-room="shoes">CAM 1 – Shoes</button>
+            <button class="cam-button" data-room="restroom">CAM 2 – Restroom</button>
+            <button class="cam-button" data-room="store">CAM 3 – Store</button>
+            <button class="cam-button" data-room="checkout">CAM 4 – Checkout</button>
+        </div>
+
+        <div id="jumpscareOverlay">
+            <img src="jumpscare.png">
+        </div>
+    </div>
+
+<script>
+/* DOM ELEMENTS */
+const titleScreen = document.getElementById("titleScreen");
+const gameScreen = document.getElementById("gameScreen");
+const newGameBtn = document.getElementById("newGameBtn");
+
+const roomImage = document.getElementById("roomImage");
+const nightText = document.getElementById("nightText");
+const timeText = document.getElementById("timeText");
+const powerText = document.getElementById("powerText");
+const usageText = document.getElementById("usageText");
+const guardText = document.getElementById("guardText");
+const guardTimerText = document.getElementById("guardTimerText");
+
+const leftDoorBtn = document.getElementById("leftDoorBtn");
+const rightDoorBtn = document.getElementById("rightDoorBtn");
+
+const camToggle = document.getElementById("camToggle");
+const camPanel = document.getElementById("camPanel");
+const camButtons = document.querySelectorAll(".cam-button");
+
+const jumpscareOverlay = document.getElementById("jumpscareOverlay");
+
+/* IMAGES */
+const rooms = {
+    security: "room_security.jpg",
+    shoes: "room_shoes.jpg",
+    restroom: "room_restroom.jpg",
+    store: "room_store.jpg",
+    checkout: "room_checkout.jpg"
+};
+
+/* GAME STATE */
+const gameState = {
+    night: 1,
+    timeMinutes: 0,
+    power: 100,
+    usage: 1,
+    camOpen: false,
+    currentCamRoom: "shoes",
+    leftDoorLocked: false,
+    rightDoorLocked: false,
+    guardDistance: "far",
+    guardTimer: 5,
+    guardTimerActive: false,
+    isRunning: false,
+    loopInterval: null
+};
+
+/* HELPERS */
+function showScreen(screen) {
+    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+    screen.classList.add("active");
+}
+
+function formatTimeFromMinutes(minutes) {
+    const hourLabels = ["12", "1", "2", "3", "4", "5"];
+    const hourIndex = Math.floor(minutes / 60);
+    const minutePart = Math.floor(minutes % 60);
+    return hourLabels[hourIndex] + ":" + minutePart.toString().padStart(2, "0") + " AM";
+}
+
+function updateTimeDisplay() {
+    timeText.textContent = formatTimeFromMinutes(gameState.timeMinutes);
+}
+
+function updatePowerDisplay() {
+    powerText.textContent = "Power: " + Math.floor(gameState.power) + "%";
+    usageText.textContent = "Usage: " + gameState.usage + " bar";
+}
+
+function updateGuardDisplay() {
+    guardText.textContent = "Guard Distance: " + gameState.guardDistance.toUpperCase();
+    guardTimerText.textContent = "Time Left: " + gameState.guardTimer + "s";
+}
+
+function setMainImage() {
+    roomImage.src = gameState.camOpen
+        ? rooms[gameState.currentCamRoom]
+        : rooms.security;
+}
+
+function setCamRoom(roomKey) {
+    gameState.currentCamRoom = roomKey;
+    camButtons.forEach(btn => btn.classList.toggle("active", btn.dataset.room === roomKey));
+    if (gameState.camOpen) setMainImage();
+}
+
+function toggleCam() {
+    gameState.camOpen = !gameState.camOpen;
+    camToggle.classList.toggle("active", gameState.camOpen);
+    camPanel.classList.toggle("hidden", !gameState.camOpen);
+    setMainImage();
+}
+
+function toggleLeftDoor() {
+    gameState.leftDoorLocked = !gameState.leftDoorLocked;
+    leftDoorBtn.classList.toggle("active", gameState.leftDoorLocked);
+    leftDoorBtn.textContent = "Left Door: " + (gameState.leftDoorLocked ? "LOCKED" : "OPEN");
+}
+
+function toggleRightDoor() {
+    gameState.rightDoorLocked = !gameState.rightDoorLocked;
+    rightDoorBtn.classList.toggle("active", gameState.rightDoorLocked);
+    rightDoorBtn.textContent = "Right Door: " + (gameState.rightDoorLocked ? "LOCKED" : "OPEN");
+}
+
+function resetGameState() {
+    gameState.timeMinutes = 0;
+    gameState.power = 100;
+    gameState.camOpen = false;
+    gameState.currentCamRoom = "shoes";
+    gameState.leftDoorLocked = false;
+    gameState.rightDoorLocked = false;
+    gameState.guardDistance = "far";
+    gameState.guardTimer = 5;
+    gameState.guardTimerActive = false;
+
+    guardTimerText.classList.add("hidden");
+
+    camPanel.classList.add("hidden");
+    camToggle.classList.remove("active");
+
+    setMainImage();
+    updateTimeDisplay();
+    updatePowerDisplay();
+    updateGuardDisplay();
+}
+
+function startGame() {
+    resetGameState();
+    showScreen(gameScreen);
+    gameState.isRunning = true;
+
+    if (gameState.loopInterval) clearInterval(gameState.loopInterval);
+    gameState.loopInterval = setInterval(gameLoop, 1000);
+}
+
+function stopGame() {
+    gameState.isRunning = false;
+    clearInterval(gameState.loopInterval);
+}
+
+function triggerJumpscare() {
+    stopGame();
+    jumpscareOverlay.classList.add("active");
+    setTimeout(() => {
+        jumpscareOverlay.classList.remove("active");
+        showScreen(titleScreen);
+    }, 3000);
+}
+
+/* GUARD LOGIC */
+function guardBehavior() {
+    if (gameState.guardDistance === "far") {
+        if (Math.random() < 0.02) {
+            gameState.guardDistance = "close";
+            gameState.guardTimer = 5;
+            gameState.guardTimerActive = true;
+            guardTimerText.classList.remove("hidden");
+        }
+    } else {
+        if (gameState.guardTimerActive) {
+            gameState.guardTimer -= 1;
+            if (gameState.guardTimer <= 0) {
+                if (!gameState.leftDoorLocked || !gameState.rightDoorLocked) {
+                    triggerJumpscare();
+                    return;
+                }
+                gameState.guardDistance = "far";
+                gameState.guardTimerActive = false;
+                guardTimerText.classList.add("hidden");
+            }
+        }
+    }
+    updateGuardDisplay();
+}
+
+/* MAIN GAME LOOP */
+function gameLoop() {
+    if (!gameState.isRunning) return;
+
+    gameState.timeMinutes += 0.33;
+    if (gameState.timeMinutes >= 360) {
+        alert("You survived until 6 AM!");
+        showScreen(titleScreen);
+        stopGame();
+        return;
+    }
+    updateTimeDisplay();
+
+    let drain = 0.0125;
+    if (gameState.camOpen) drain += 0.25;
+    if (gameState.leftDoorLocked) drain += 0.125;
+    if (gameState.rightDoorLocked) drain += 0.125;
+
+    gameState.power -= drain;
+    if (gameState.power <= 0) {
+        gameState.power = 0;
+        updatePowerDisplay();
+        triggerJumpscare();
+        return;
+    }
+    updatePowerDisplay();
+
+    guardBehavior();
+}
+
+/* EVENT LISTENERS */
+newGameBtn.addEventListener("click", startGame);
+camToggle.addEventListener("click", toggleCam);
+leftDoorBtn.addEventListener("click", toggleLeftDoor);
+rightDoorBtn.addEventListener("click", toggleRightDoor);
+
+camButtons.forEach(btn => {
+    btn.addEventListener("click", () => setCamRoom(btn.dataset.room));
+});
+
+/* INIT */
+resetGameState();
+showScreen(titleScreen);
+</script>
+
+</body>
+</html>
