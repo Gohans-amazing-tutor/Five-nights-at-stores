@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Five Nights At Stores</title>
+
+    <!-- =========================
+         GLOBAL STYLES
+    ========================== -->
+    <style>
+        /* Reset-ish */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            background: black;
+            color: white;
+            font-family: Arial, Helvetica, sans-serif;
+            overflow: hidden;
+        }
+
+        /* Generic screen container */
+        .screen {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        /* =========================
+           TITLE SCREEN
+        ========================== */
+
+        #titleScreen {
+            background: black;
+        }
+
+        #titleScreen img.title-image {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            height: 90%;
+            object-fit: contain;
+        }
+
+        .copyright {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            font-size: 14px;
+        }
+
+        .version {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            font-size: 14px;
+        }
+
+        /* Invisible clickable area over "> NEW GAME" */
+        .new-game-button {
+            position: absolute;
+            left: 12%;
+            top: 55%;
+            width: 20%;
+            height: 8%;
+            cursor: pointer;
+            background: transparent;
+            border: none;
+        }
+
+        .new-game-button:focus-visible {
+            outline: 2px solid white;
+        }
+
+        /* =========================
+           GAME SCREEN LAYOUT
+        ========================== */
+
+        #gameScreen {
+            background: #000;
+        }
+
+        /* Main room image */
+        .game-main-image {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            max-width: 90vw;
+            max-height: 80vh;
+            object-fit: contain;
+            border: 2px solid #444;
+            background: #000;
+        }
+
+        /* Top info: night + time */
+        .top-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            text-align: right;
+            font-size: 18px;
+        }
+
+        .top-info-line {
+            margin-bottom: 4px;
+        }
+
+        /* Camera panel at bottom */
+        .cam-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid #444;
+            border-radius: 4px;
+        }
+
+        .cam-button {
+            padding: 8px 14px;
+            background: #111;
+            color: white;
+            border: 1px solid #555;
+            cursor: pointer;
+            font-size: 14px;
+            min-width: 120px;
+            text-align: center;
+        }
+
+        .cam-button.active {
+            background: #444;
+        }
+
+        .cam-button:hover {
+            background: #222;
+        }
+
+        /* Power + status bar (bottom-left) */
+        .status-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid #444;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .status-line {
+            margin-bottom: 4px;
+        }
+
+        .status-line:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Ross status text (bottom-right) */
+        .ross-status-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid #444;
+            border-radius: 4px;
+            font-size: 14px;
+            max-width: 220px;
+        }
+
+        /* =========================
+           OVERLAYS (WIN / LOSE)
+        ========================== */
+
+        .overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .overlay.active {
+            display: flex;
+        }
+
+        .overlay-title {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        .overlay-subtitle {
+            font-size: 20px;
+            margin-bottom: 30px;
+        }
+
+        .overlay-button {
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            background: #fff;
+            color: #000;
+            border: none;
+            border-radius: 4px;
+        }
+
+        .overlay-button:hover {
+            background: #ddd;
+        }
+
+        /* =========================
+           SMALL UTILITY CLASSES
+        ========================== */
+
+        .hidden {
+            display: none !important;
+        }
+
+        .debug-log {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 10px;
+            max-width: 260px;
+            max-height: 120px;
+            overflow-y: auto;
+            color: #888;
+            white-space: pre-line;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- =========================
+         TITLE SCREEN
+    ========================== -->
+    <div id="titleScreen" class="screen active">
+        <!-- Your title image (with Ross + text) -->
+        <img class="title-image" src="title_screen.png" alt="Five Nights At Stores Title">
+
+        <!-- Clickable area over "> NEW GAME" -->
+        <button class="new-game-button" id="newGameBtn" aria-label="New Game"></button>
+
+        <div class="copyright">© Evan Productions 2026</div>
+        <div class="version">v 1.2</div>
+    </div>
+
+    <!-- =========================
+         GAME SCREEN
+    ========================== -->
+    <div id="gameScreen" class="screen">
+
+        <!-- Main room image -->
+        <img id="roomImage" class="game-main-image" src="" alt="Room">
+
+        <!-- Top info: Night + Time -->
+        <div class="top-info">
+            <div class="top-info-line" id="nightText">Night 1</div>
+            <div class="top-info-line" id="timeText">12:00 AM</div>
+        </div>
+
+        <!-- Camera buttons -->
+        <div class="cam-panel">
+            <button class="cam-button active" data-room="shoes">CAM 1 – Shoes</button>
+            <button class="cam-button" data-room="restroom">CAM 2 – Restroom</button>
+            <button class="cam-button" data-room="store">CAM 3 – Store</button>
+            <button class="cam-button" data-room="checkout">CAM 4 – Checkout</button>
+        </div>
+
+        <!-- Status panel (power, usage, etc.) -->
+        <div class="status-panel">
+            <div class="status-line" id="powerText">Power: 100%</div>
+            <div class="status-line" id="usageText">Usage: 1 bar</div>
+            <div class="status-line" id="nightProgressText">Progress: 12:00 AM → 6:00 AM</div>
+        </div>
+
+        <!-- Ross status panel -->
+        <div class="ross-status-panel">
+            <div id="rossLocationText">Ross Location: CAM 1 – Shoes</div>
+            <div id="rossThreatText">Threat Level: Low</div>
+        </div>
+
+        <!-- Debug log (optional, can be removed) -->
+        <div class="debug-log" id="debugLog"></div>
+
+        <!-- Win overlay -->
+        <div id="winOverlay" class="overlay">
+            <div class="overlay-title">6:00 AM</div>
+            <div class="overlay-subtitle">You survived the night.</div>
+            <button class="overlay-button" id="winBackToTitleBtn">Back to Title</button>
+        </div>
+
+        <!-- Lose overlay -->
+        <div id="loseOverlay" class="overlay">
+            <div class="overlay-title">GAME OVER</div>
+            <div class="overlay-subtitle">Ross caught you at the store.</div>
+            <button class="overlay-button" id="loseBackToTitleBtn">Back to Title</button>
+        </div>
+
+    </div>
+
+    <!-- =========================
+         GAME SCRIPT
+    ========================== -->
+    <script>
+        // -----------------------------------
+        // DOM ELEMENTS
+        // -----------------------------------
+        const titleScreen = document.getElementById('titleScreen');
+        const gameScreen = document.getElementById('gameScreen');
+        const newGameBtn = document.getElementById('newGameBtn');
+
+        const roomImage = document.getElementById('roomImage');
+        const camButtons = document.querySelectorAll('.cam-button');
+
+        const nightText = document.getElementById('nightText');
+        const timeText = document.getElementById('timeText');
+        const powerText = document.getElementById('powerText');
+        const usageText = document.getElementById('usageText');
+        const nightProgressText = document.getElementById('nightProgressText');
+
+        const rossLocationText = document.getElementById('rossLocationText');
+        const rossThreatText = document.getElementById('rossThreatText');
+
+        const debugLog = document.getElementById('debugLog');
+
+        const winOverlay = document.getElementById('winOverlay');
+        const loseOverlay = document.getElementById('loseOverlay');
+        const winBackToTitleBtn = document.getElementById('winBackToTitleBtn');
+        const loseBackToTitleBtn = document.getElementById('loseBackToTitleBtn');
+
+        // -----------------------------------
+        // ROOM IMAGE MAP
+        // -----------------------------------
+        const rooms = {
+            shoes: 'room_shoes.jpg',
+            restroom: 'room_restroom.jpg',
+            store: 'room_store.jpg',
+            checkout: 'room_checkout.jpg'
+        };
+
+        // -----------------------------------
+        // GAME STATE
+        // -----------------------------------
+        const gameState = {
+            night: 1,
+            // time in "minutes" from 0 to 360 (12:00 AM to 6:00 AM)
+            timeMinutes: 0,
+            // power from 0 to 100
+            power: 100,
+            // usage level (1–4)
+            usage: 1,
+            // current camera room
+            currentRoomKey: 'shoes',
+            // Ross location index (0–3 for now)
+            rossLocationIndex: 0,
+            // whether game is running
+            isRunning: false,
+            // timers
+            mainLoopInterval: null
+        };
+
+        const rossPath = ['shoes', 'store', 'checkout', 'restroom'];
+
+        // -----------------------------------
+        // UTILITY FUNCTIONS
+        // -----------------------------------
+        function logDebug(message) {
+            const time = new Date().toLocaleTimeString();
+            debugLog.textContent += '[' + time + '] ' + message + '\n';
+            debugLog.scrollTop = debugLog.scrollHeight;
+        }
+
+        function showScreen(screenElement) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            screenElement.classList.add('active');
+        }
+
+        function showOverlay(overlayElement) {
+            overlayElement.classList.add('active');
+        }
+
+        function hideOverlay(overlayElement) {
+            overlayElement.classList.remove('active');
+        }
+
+        // -----------------------------------
+        // ROOM / CAMERA HANDLING
+        // -----------------------------------
+        function setRoom(roomKey) {
+            const file = rooms[roomKey];
+            if (file) {
+                roomImage.src = file;
+            }
+            gameState.currentRoomKey = roomKey;
+
+            camButtons.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.room === roomKey);
+            });
+
+            updateRossStatusText();
+        }
+
+        function setupCameraButtons() {
+            camButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const roomKey = btn.dataset.room;
+                    setRoom(roomKey);
+                    // Increase usage slightly when using cameras
+                    gameState.usage = Math.min(4, gameState.usage + 1);
+                    updateStatusText();
+                });
+            });
+        }
+
+        // -----------------------------------
+        // TIME / NIGHT HANDLING
+        // -----------------------------------
+        function formatTimeFromMinutes(minutes) {
+            // minutes from 0 to 360
+            const totalMinutes = minutes;
+            const hourFloat = totalMinutes / 60;
+            const hourIndex = Math.floor(hourFloat); // 0..5
+            const minutePart = Math.floor((hourFloat - hourIndex) * 60);
+
+            const hourLabels = ['12', '1', '2', '3', '4', '5'];
+            const label = hourLabels[hourIndex] || '6';
+
+            const minuteStr = minutePart.toString().padStart(2, '0');
+            return label + ':' + minuteStr + ' AM';
+        }
+
+        function updateTime() {
+            const t = gameState.timeMinutes;
+            timeText.textContent = formatTimeFromMinutes(t);
+            nightText.textContent = 'Night ' + gameState.night;
+            nightProgressText.textContent = 'Progress: ' + formatTimeFromMinutes(t) + ' → 6:00 AM';
+        }
+
+        // -----------------------------------
+        // POWER HANDLING
+        // -----------------------------------
+        function updatePower() {
+            // Basic drain: base + usage
+            const baseDrain = 0.02; // per tick
+            const usageDrain = (gameState.usage - 1) * 0.02;
+            const totalDrain = baseDrain + usageDrain;
+
+            gameState.power = Math.max(0, gameState.power - totalDrain);
+            powerText.textContent = 'Power: ' + gameState.power.toFixed(0) + '%';
+            usageText.textContent = 'Usage: ' + gameState.usage + ' bar' + (gameState.usage > 1 ? 's' : '');
+        }
+
+        function updateStatusText() {
+            powerText.textContent = 'Power: ' + gameState.power.toFixed(0) + '%';
+            usageText.textContent = 'Usage: ' + gameState.usage + ' bar' + (gameState.usage > 1 ? 's' : '');
+        }
+
+        // -----------------------------------
+        // ROSS MOVEMENT / THREAT
+        // -----------------------------------
+        function moveRossOccasionally() {
+            // Simple chance to move Ross every tick
+            const moveChance = 0.02; // 2% per tick
+            if (Math.random() < moveChance) {
+                gameState.rossLocationIndex = Math.min(
+                    rossPath.length - 1,
+                    gameState.rossLocationIndex + 1
+                );
+                logDebug('Ross moved to ' + rossPath[gameState.rossLocationIndex]);
+            }
+        }
+
+        function getRossCurrentRoom() {
+            return rossPath[gameState.rossLocationIndex];
+        }
+
+        function updateRossStatusText() {
+            const rossRoom = getRossCurrentRoom();
+            const roomNames = {
+                shoes: 'CAM 1 – Shoes',
+                restroom: 'CAM 2 – Restroom',
+                store: 'CAM 3 – Store',
+                checkout: 'CAM 4 – Checkout'
+            };
+
+            const readable = roomNames[rossRoom] || 'Unknown';
+            rossLocationText.textContent = 'Ross Location: ' + readable;
+
+            // Threat level based on how far along the path he is
+            const idx = gameState.rossLocationIndex;
+            let threat = 'Low';
+            if (idx === 1) threat = 'Medium';
+            if (idx === 2) threat = 'High';
+            if (idx === 3) threat = 'Critical';
+
+            rossThreatText.textContent = 'Threat Level: ' + threat;
+        }
+
+        function checkRossCaughtYou() {
+            // If Ross is at checkout (index 2) or restroom (index 3) AND
+            // you're not watching him, small chance of game over
+            const rossRoom = getRossCurrentRoom();
+            const isDangerRoom = (rossRoom === 'checkout' || rossRoom === 'restroom');
+            const watchingRoss = (gameState.currentRoomKey === rossRoom);
+
+            if (isDangerRoom && !watchingRoss) {
+                const catchChance = 0.01; // 1% per tick
+                if (Math.random() < catchChance) {
+                    triggerGameOver();
+                }
+            }
+        }
+
+        // -----------------------------------
+        // WIN / LOSE
+        // -----------------------------------
+        function checkWinCondition() {
+            if (gameState.timeMinutes >= 360) {
+                triggerWin();
+            }
+        }
+
+        function triggerWin() {
+            logDebug('Player survived the night.');
+            stopGameLoop();
+            showOverlay(winOverlay);
+        }
+
+        function triggerGameOver() {
+            logDebug('Ross caught the player.');
+            stopGameLoop();
+            showOverlay(loseOverlay);
+        }
+
+        // -----------------------------------
+        // MAIN GAME LOOP
+        // -----------------------------------
+        function gameTick() {
+            if (!gameState.isRunning) return;
+
+            // Advance time
+            gameState.timeMinutes += 0.5; // each tick = 0.5 "minutes"
+            if (gameState.timeMinutes > 360) {
+                gameState.timeMinutes = 360;
+            }
+
+            // Update time display
+            updateTime();
+
+            // Power drain
+            updatePower();
+
+            // Ross movement
+            moveRossOccasionally();
+            updateRossStatusText();
+
+            // Check if Ross catches you
+            checkRossCaughtYou();
+
+            // Check win condition
+            checkWinCondition();
+
+            // If power hits 0, increase threat
+            if (gameState.power <= 0) {
+                gameState.usage = 1;
+                rossThreatText.textContent = 'Threat Level: MAX (Power Out)';
+                const catchChance = 0.05;
+                if (Math.random() < catchChance) {
+                    triggerGameOver();
+                }
+            }
+        }
+
+        function startGameLoop() {
+            if (gameState.mainLoopInterval) {
+                clearInterval(gameState.mainLoopInterval);
+            }
+            gameState.isRunning = true;
+            gameState.mainLoopInterval = setInterval(gameTick, 200); // 5 ticks per second
+        }
+
+        function stopGameLoop() {
+            gameState.isRunning = false;
+            if (gameState.mainLoopInterval) {
+                clearInterval(gameState.mainLoopInterval);
+                gameState.mainLoopInterval = null;
+            }
+        }
+
+        // -----------------------------------
+        // GAME START / RESET
+        // -----------------------------------
+        function resetGameState() {
+            gameState.night = 1;
+            gameState.timeMinutes = 0;
+            gameState.power = 100;
+            gameState.usage = 1;
+            gameState.currentRoomKey = 'shoes';
+            gameState.rossLocationIndex = 0;
+            gameState.isRunning = false;
+
+            updateTime();
+            updateStatusText();
+            updateRossStatusText();
+            setRoom('shoes');
+        }
+
+        function startNewGame() {
+            hideOverlay(winOverlay);
+            hideOverlay(loseOverlay);
+            resetGameState();
+            showScreen(gameScreen);
+            startGameLoop();
+            logDebug('New game started.');
+        }
+
+        function backToTitle() {
+            stopGameLoop();
+            hideOverlay(winOverlay);
+            hideOverlay(loseOverlay);
+            showScreen(titleScreen);
+            logDebug('Returned to title screen.');
+        }
+
+        // -----------------------------------
+        // EVENT LISTENERS
+        // -----------------------------------
+        function setupEventListeners() {
+            // NEW GAME from title
+            newGameBtn.addEventListener('click', () => {
+                startNewGame();
+            });
+
+            // Overlays back to title
+            winBackToTitleBtn.addEventListener('click', () => {
+                backToTitle();
+            });
+
+            loseBackToTitleBtn.addEventListener('click', () => {
+                backToTitle();
+            });
+
+            // Keyboard shortcut: Enter to start from title
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && titleScreen.classList.contains('active')) {
+                    startNewGame();
+                }
+            });
+
+            // Camera buttons
+            setupCameraButtons();
+        }
+
+        // -----------------------------------
+        // IMAGE PRELOAD
+        // -----------------------------------
+        function preloadImages() {
+            const allImages = [
+                'title_screen.png',
+                rooms.shoes,
+                rooms.restroom,
+                rooms.store,
+                rooms.checkout
+            ];
+
+            allImages.forEach(src => {
+                const img = new Image();
+                img.src = src;
+            });
+        }
+
+        // -----------------------------------
+        // INIT
+        // -----------------------------------
+        function init() {
+            preloadImages();
+            setupEventListeners();
+            resetGameState();
+            showScreen(titleScreen);
+            logDebug('Game initialized. Waiting on title screen.');
+        }
+
+        // Start
+        init();
+    </script>
+</body>
+</html>
